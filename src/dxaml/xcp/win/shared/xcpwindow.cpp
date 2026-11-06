@@ -430,20 +430,24 @@ CXcpDispatcher::OnPaint()
         QueueReentrancyCheck();
     }
 
-    CReentrancyGuard reentrancyGuard(&m_bMessageReentrancyGuard);
-
-    if (!m_bInit)
     {
-        IFC(E_FAIL);
-    }
+        CReentrancyGuard reentrancyGuard(&m_bMessageReentrancyGuard);
 
-    // Check window size
-    if (m_pBH)
-    {
-        IFC(m_pBH->OnPaint());
+        if (!m_bInit)
+        {
+            IFC(E_FAIL);
+        }
+
+        // Check window size
+        if (m_pBH)
+        {
+            IFC(m_pBH->OnPaint());
+        }
     }
 
 Cleanup:
+    RestartDispatchDeferredByGuard();
+
     if (FAILED(hr) && m_pBH)
     {
         CCoreServices* pcs = m_pBH->GetContextInterface();
@@ -602,6 +606,7 @@ void CXcpDispatcher::ProcessMessage(UINT msg, WPARAM wParam, LPARAM lParam)
         {
             OnReentrancyProtectedWindowMessage(
                             msg, wParam, lParam);
+            RestartDispatchDeferredByGuard();
             break;
         }
 
@@ -1237,6 +1242,18 @@ void CXcpDispatcher::MessageTimerCallback()
                 TraceLoggingUInt32(workCount, "WorkCount"),
                 TraceLoggingLevel(WINEVENT_LEVEL_VERBOSE));
         }
+        else if (m_bMessageReentrancyGuard)
+        {
+            // A wait that pumps messages, inside a message that holds the guard, got us here: on an STA thread that
+            // includes any contended lock in managed code, such as the one ComWrappers takes for every new RCW.
+            // Dispatching would fail-fast on the guard, so the work waits for the outer message to end.
+            m_dispatchDeferredByGuard = true;
+
+            TraceLoggingProviderWrite(
+                GraphicsTelemetry, "Dispatch_ReentrancyDeferred",
+                TraceLoggingUInt32(workCount, "WorkCount"),
+                TraceLoggingLevel(WINEVENT_LEVEL_VERBOSE));
+        }
         else
         {
             bool dispatchedWork_DontCare;
@@ -1300,6 +1317,30 @@ void CXcpDispatcher::ResumeDispatch()
     m_state = State::Running;
 
     if (workCount > 0)
+    {
+        TraceLoggingProviderWrite(
+            GraphicsTelemetry, "Dispatch_StartDispatcherQueueTimer",
+            TraceLoggingLevel(WINEVENT_LEVEL_VERBOSE));
+
+        IFCFAILFAST(m_dispatcherQueueTimer->Start());
+    }
+}
+
+// The timer is one-shot, and the deferred callback was the one meant to dispatch the queue, so nothing else restarts
+// it: the outer dispatch read hasMoreWork before running its message, and enqueueing only starts the timer for an
+// empty queue.
+void CXcpDispatcher::RestartDispatchDeferredByGuard()
+{
+    // Nested in another guarded message, which does it when it ends.
+    if (!m_dispatchDeferredByGuard || m_bMessageReentrancyGuard)
+    {
+        return;
+    }
+
+    m_dispatchDeferredByGuard = false;
+
+    // Suspended restarts it on resume; Draining empties the queue itself.
+    if (m_state == State::Running && m_DeferredInvoke.GetWorkCount() > 0)
     {
         TraceLoggingProviderWrite(
             GraphicsTelemetry, "Dispatch_StartDispatcherQueueTimer",

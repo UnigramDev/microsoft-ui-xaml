@@ -154,6 +154,7 @@ private:
 
     static HRESULT CALLBACK MessageTimerCallbackStatic(void* myUserData);
     void MessageTimerCallback();
+    void RestartDispatchDeferredByGuard();
 
     struct WeakPtr
     {
@@ -177,6 +178,9 @@ private:
 
     // Reentrancy guard for messages
     bool m_bMessageReentrancyGuard;
+
+    // A timer callback arrived while the guard was held, and the timer must be restarted once it is released.
+    bool m_dispatchDeferredByGuard { false };
 
     void * m_pControl;
     EVENTPFN m_pFn;
