@@ -155,7 +155,8 @@ public:
         bool isVirtual,
         bool isHDR,
         bool requestAtlas,
-        _Outptr_ DCompSurface **ppSurface
+        _Outptr_ DCompSurface **ppSurface,
+        UINT32 atlasGroup = 0
         );
 
     xref_ptr<DCompSurface> CreateSurfaceWithNoHardware(bool isVirtual);
@@ -168,6 +169,11 @@ public:
         _In_ IUnknown *pIUnk,
         _Outptr_ DCompSurfaceFactory **ppSurfaceFactory
         );
+
+    // Each atlas group gets a surface factory of its own on XAML's device, so its surfaces share atlas pages only
+    // with each other. A page is freed only once every surface on it is gone, so content that is kept and content
+    // that churns pin each other's pages when they share a factory.
+    _Check_return_ HRESULT EnsureAtlasGroupSurfaceFactory(UINT32 atlasGroup, _Outptr_ IDCompositionSurfaceFactory** surfaceFactoryNoRef);
 
     _Check_return_ HRESULT OnSurfaceFactoryDestroyed(
         _In_ DCompSurfaceFactory* pSurfaceFactory
@@ -340,6 +346,7 @@ public:
     SharedTransitionAnimations* GetSharedTransitionAnimationsNoRef() { return &m_sharedTransitionAnimations; }
 
     _Check_return_ HRESULT OnSurfaceFactoryCreated(_In_ DCompSurfaceFactory* newSurfaceFactory);
+    _Check_return_ HRESULT GetSurfaceFactoryForAtlasGroup(UINT32 atlasGroup, _Outptr_result_maybenull_ IDCompositionSurfaceFactory** surfaceFactoryNoRef);
 
     _Check_return_ HRESULT GetSystemBackdropBrush(_Outptr_result_maybenull_ ABI::Windows::UI::Composition::ICompositionBrush** systemBackdropBrush);
     _Check_return_ HRESULT SetSystemBackdropBrush(_In_opt_ ABI::Windows::UI::Composition::ICompositionBrush* systemBackdropBrush);
@@ -433,6 +440,9 @@ private:
     // CompositionHelper provides convenient access and management of some core Composition
     // resources, with the Holder here as a smart manager of its lifetime.
     CompositionHelperHolder m_pCompositionHelper;
+
+    // Released with the main surface factory, on device loss and shutdown.
+    std::vector<std::pair<UINT32, xref_ptr<DCompSurfaceFactory>>> m_atlasGroupSurfaceFactories;
 
     // DComp resources
     _Maybenull_ Microsoft::WRL::ComPtr<IDCompositionDevice2> m_spMainDevice;

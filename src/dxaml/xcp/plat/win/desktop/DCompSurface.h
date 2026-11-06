@@ -72,7 +72,8 @@ public:
         bool requestAtlas,
         XUINT32 widthWithoutGutters,
         XUINT32 heightWithoutGutters,
-        _Outptr_ DCompSurface **ppTexture
+        _Outptr_ DCompSurface **ppTexture,
+        UINT32 atlasGroup = 0
         );
 
      static _Check_return_ HRESULT Create(
@@ -144,6 +145,7 @@ public:
     bool IsDiscarded();
 
     bool IsVirtual();
+    UINT32 GetAtlasGroup() const { return m_atlasGroup; }
 
     bool IsOpaque() const { return m_fIsOpaque; }
 
@@ -276,6 +278,9 @@ private:
     bool m_isVirtual : 1;
     bool m_isHDR : 1;
     bool m_requestAtlas : 1;
+
+    // Nonzero places the surface in that group's surface factory, see DCompTreeHost::EnsureAtlasGroupSurfaceFactory.
+    UINT32 m_atlasGroup = 0;
 
     // DComp, and SurfaceImageSource both allow calling BeginDraw multiple
     // times while an EndDraw is outstanding (for performance reasons).

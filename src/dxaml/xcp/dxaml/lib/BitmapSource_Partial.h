@@ -7,6 +7,16 @@
 #include "DXamlAsyncBase.h"
 #include <fwd/windows.storage.h>
 
+// Private: not in the metadata, reached by QueryInterface on a BitmapImage or WriteableBitmap.
+// SetAtlasGroup places the hardware surfaces the source allocates from then on in a separate set of DComp atlas pages,
+// shared only with sources in the same group; 0, the default, is the set all other content uses. Pages are freed only
+// when empty, so an app that keeps some images for a long time while others churn can give each kind its own group.
+MIDL_INTERFACE("c81653bf-fd64-43aa-bfb4-5006d578301f")
+IBitmapSourceAtlasGroup : IUnknown
+{
+    virtual HRESULT STDMETHODCALLTYPE SetAtlasGroup(UINT32 atlasGroup) = 0;
+};
+
 namespace DirectUI
 {
     // A reusable event.  Used to signal that an async process has completed
@@ -36,12 +46,20 @@ namespace DirectUI
 
 
     PARTIAL_CLASS(BitmapSource)
+        , public IBitmapSourceAtlasGroup
     {
         friend class BitmapSourceFactory;
 
     public:
         BitmapSource();
         ~BitmapSource() override;
+
+        IFACEMETHOD(SetAtlasGroup)(UINT32 atlasGroup) override;
+
+    protected:
+        HRESULT QueryInterfaceImpl(_In_ REFIID iid, _Outptr_ void** ppObject) override;
+
+    public:
 
         _Check_return_ HRESULT SetSourceImpl(_In_ wsts::IRandomAccessStream* pStreamSource);
         _Check_return_ HRESULT SetSourceAsyncImpl(_In_ wsts::IRandomAccessStream* pStreamSource, _Outptr_ wf::IAsyncAction** returnValue);

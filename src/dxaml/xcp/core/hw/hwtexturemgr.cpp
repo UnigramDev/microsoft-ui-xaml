@@ -851,7 +851,8 @@ HWTextureManager::CreateTexture(
     XUINT32 heightWithoutGutters,
     HWTextureFlags flags,
     _Outptr_ HWTexture **ppTexture,
-    _In_opt_ DCompSurfaceFactory *pChildDevice
+    _In_opt_ DCompSurfaceFactory *pChildDevice,
+    UINT32 atlasGroup
     )
 {
     HRESULT hr = S_OK;
@@ -887,6 +888,13 @@ HWTextureManager::CreateTexture(
     }
     else
     {
+        // Virtual surfaces aren't atlased. Alpha masks and HDR keep the main factory, which is the only one known to
+        // serve formats other than 32bpp BGRA.
+        if (isVirtual || isAlphaMask || isHDR)
+        {
+            atlasGroup = 0;
+        }
+
         DCompTreeHost *pDCompTreeHostNoRef = m_pRenderTargetNoRef->GetDCompTreeHost();
         IFC(pDCompTreeHostNoRef->CreateSurface(
             widthWithoutGutters,
@@ -896,7 +904,8 @@ HWTextureManager::CreateTexture(
             isVirtual,
             isHDR,
             requestAtlas,
-            &pDeviceSurface
+            &pDeviceSurface,
+            atlasGroup
             ));
     }
 

@@ -35,7 +35,8 @@ DCompSurface::Create(
     bool requestAtlas,
     XUINT32 widthWithoutGutters,
     XUINT32 heightWithoutGutters,
-    _Outptr_ DCompSurface** ppTexture
+    _Outptr_ DCompSurface** ppTexture,
+    UINT32 atlasGroup
     )
 {
     IFC_RETURN(pDCompHost->UpdateAtlasHintForRequest(widthWithoutGutters, heightWithoutGutters));
@@ -52,6 +53,7 @@ DCompSurface::Create(
         requestAtlas
         ));
 
+    texture->m_atlasGroup = atlasGroup;
     IFC_RETURN(texture->InitializeSurface(pDevice, pDCompHost, isVirtual));
 
     *ppTexture = texture.detach();
@@ -171,6 +173,22 @@ DCompSurface::InitializeSurface(
             ));
 
         SetInterface(m_pCompositionSurface, m_pVirtualCompositionSurface);
+    }
+    else if (m_atlasGroup != 0)
+    {
+        IDCompositionSurfaceFactory* surfaceFactoryNoRef = nullptr;
+        IFC_RETURN_DEVICE_LOST_OTHERWISE_FAIL_FAST(pDCompTreeHost->EnsureAtlasGroupSurfaceFactory(m_atlasGroup, &surfaceFactoryNoRef));
+        IFC_RETURN_DEVICE_LOST_OTHERWISE_FAIL_FAST(pDCompTreeHost->GetCompositionHelper()->CreateSurface(
+            surfaceFactoryNoRef,
+            GetWidthWithoutGutters(),
+            GetHeightWithoutGutters(),
+            compositionSurfaceFormat,
+            m_fIsOpaque ? DXGI_ALPHA_MODE_IGNORE : DXGI_ALPHA_MODE_PREMULTIPLIED,
+            !m_requestAtlas,
+            &m_pCompositionSurface
+            ));
+
+        UpdateMemoryFootprint(TRUE);
     }
     else
     {

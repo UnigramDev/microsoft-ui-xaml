@@ -218,6 +218,8 @@ DCompTreeHost::ReleaseResources(bool shouldDeferClosingInteropCompostior)
 
     m_projectedShadowManager->ReleaseResources();
 
+    m_atlasGroupSurfaceFactories.clear();
+
     if (GetSurfaceFactory() != nullptr)
     {
         //we store the pointers of offered surfacefactories in a list
@@ -436,6 +438,11 @@ void DCompTreeHost::GetSurfaceFactoriesForCurrentThread(_Inout_ std::vector<IDCo
         surfaceFactoryVector->push_back(GetSurfaceFactory());
     }
 
+    for (const auto& entry : m_atlasGroupSurfaceFactories)
+    {
+        surfaceFactoryVector->push_back(entry.second->GetRealSurfaceFactory());
+    }
+
     //We also need to put secondary SFs into the vector
     DCompSurfaceFactoryManager::Instance()->GetSurfaceFactoriesForCurrentThread(surfaceFactoryVector);
 }
@@ -628,6 +635,7 @@ void DCompTreeHost::ReleaseGraphicsResources()
 
         m_pCompositionHelper->ReleaseGraphicsResources();
     }
+    m_atlasGroupSurfaceFactories.clear();
     ReleaseInterface(m_pFrameRateScratchBrush);
 
     m_compositionGraphicsDevice.Reset();
@@ -1220,16 +1228,22 @@ DCompTreeHost::CreateSurface(
     bool isVirtual,
     bool isHDR,
     bool requestAtlas,
-    _Outptr_ DCompSurface **ppSurface
+    _Outptr_ DCompSurface **ppSurface,
+    UINT32 atlasGroup
     )
 {
     CD3D11Device *pD3D11Device = m_pGraphicsDeviceManagerNoRef->GetGraphicsDevice();
 
     // The device may be in offered state. In this case, we temporarily reclaim so that we can allocate a surface without error.
     std::unique_ptr<OfferTracker::UnofferRevoker> unofferRevoker;
-    if (m_offerTracker->IsOffered() && m_pCompositionHelper->GetSurfaceFactory() != nullptr)
+    if (m_offerTracker->IsOffered())
     {
-        IFC_RETURN(m_offerTracker->Unoffer(m_pCompositionHelper->GetSurfaceFactory(), &unofferRevoker));
+        IDCompositionSurfaceFactory* surfaceFactoryNoRef = nullptr;
+        IFC_RETURN(GetSurfaceFactoryForAtlasGroup(atlasGroup, &surfaceFactoryNoRef));
+        if (surfaceFactoryNoRef != nullptr)
+        {
+            IFC_RETURN(m_offerTracker->Unoffer(surfaceFactoryNoRef, &unofferRevoker));
+        }
     }
 
     IFC_RETURN(DCompSurface::Create(
@@ -1242,7 +1256,8 @@ DCompTreeHost::CreateSurface(
         requestAtlas,
         widthWithoutGutters,
         heightWithoutGutters,
-        ppSurface
+        ppSurface,
+        atlasGroup
         ));
 
     if (unofferRevoker)
@@ -1259,9 +1274,14 @@ _Check_return_ HRESULT DCompTreeHost::EnsureLegacyDeviceSurface(_In_ DCompSurfac
 {
     // The device may be in offered state.  In this case, we temporarily reclaim so that we can allocate a surface without error.
     std::unique_ptr<OfferTracker::UnofferRevoker> unofferRevoker;
-    if (m_offerTracker->IsOffered() && m_pCompositionHelper->GetSurfaceFactory() != nullptr)
+    if (m_offerTracker->IsOffered())
     {
-        IFC_RETURN(m_offerTracker->Unoffer(m_pCompositionHelper->GetSurfaceFactory(), &unofferRevoker));
+        IDCompositionSurfaceFactory* surfaceFactoryNoRef = nullptr;
+        IFC_RETURN(GetSurfaceFactoryForAtlasGroup(dcompSurface->GetAtlasGroup(), &surfaceFactoryNoRef));
+        if (surfaceFactoryNoRef != nullptr)
+        {
+            IFC_RETURN(m_offerTracker->Unoffer(surfaceFactoryNoRef, &unofferRevoker));
+        }
     }
 
     if (dcompSurface->GetIDCompSurface() == nullptr)
@@ -1302,6 +1322,62 @@ DCompTreeHost::ObtainSurfaceFactory(
     )
 {
     IFC_RETURN(DCompSurfaceFactoryManager::Instance()->ObtainSurfaceFactory(this, pIUnk, GetMainDevice(), ppSurfaceFactory));
+
+    return S_OK;
+}
+
+_Check_return_ HRESULT
+DCompTreeHost::EnsureAtlasGroupSurfaceFactory(UINT32 atlasGroup, _Outptr_ IDCompositionSurfaceFactory** surfaceFactoryNoRef)
+{
+    ASSERT(atlasGroup != 0);
+    *surfaceFactoryNoRef = nullptr;
+
+    for (const auto& entry : m_atlasGroupSurfaceFactories)
+    {
+        if (entry.first == atlasGroup)
+        {
+            *surfaceFactoryNoRef = entry.second->GetRealSurfaceFactory();
+            return S_OK;
+        }
+    }
+
+    CD3D11Device* d3d11DeviceInternal = m_pGraphicsDeviceManagerNoRef->GetGraphicsDevice();
+    if (d3d11DeviceInternal == nullptr)
+    {
+        IFC_RETURN(DXGI_ERROR_DEVICE_REMOVED);
+    }
+
+    xref_ptr<DCompSurfaceFactory> surfaceFactory;
+    {
+        CD3D11SharedDeviceGuard guard;
+        IFC_RETURN(d3d11DeviceInternal->TakeLockAndCheckDeviceLost(&guard));
+
+        // Created from the same device as the main surface factory, see EnsureResources.
+        IUnknown* device = d3d11DeviceInternal->GetD2DDevice(&guard);
+        if (device == nullptr)
+        {
+            device = d3d11DeviceInternal->GetDevice(&guard);
+        }
+
+        IFC_RETURN(DCompSurfaceFactory::Create(this, GetMainDevice(), device, surfaceFactory.ReleaseAndGetAddressOf()));
+    }
+
+    m_atlasGroupSurfaceFactories.emplace_back(atlasGroup, surfaceFactory);
+    IFC_RETURN(OnSurfaceFactoryCreated(surfaceFactory.get()));
+
+    *surfaceFactoryNoRef = surfaceFactory->GetRealSurfaceFactory();
+    return S_OK;
+}
+
+// The factory a surface in atlasGroup is created from, or null without a device.
+_Check_return_ HRESULT
+DCompTreeHost::GetSurfaceFactoryForAtlasGroup(UINT32 atlasGroup, _Outptr_result_maybenull_ IDCompositionSurfaceFactory** surfaceFactoryNoRef)
+{
+    *surfaceFactoryNoRef = m_pCompositionHelper->GetSurfaceFactory();
+    if (atlasGroup != 0 && *surfaceFactoryNoRef != nullptr)
+    {
+        IFC_RETURN(EnsureAtlasGroupSurfaceFactory(atlasGroup, surfaceFactoryNoRef));
+    }
 
     return S_OK;
 }

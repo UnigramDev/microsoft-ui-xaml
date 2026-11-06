@@ -209,6 +209,28 @@ Cleanup:
 //
 //------------------------------------------------------------------------
 
+HRESULT BitmapSource::QueryInterfaceImpl(_In_ REFIID iid, _Outptr_ void** ppObject)
+{
+    if (InlineIsEqualGUID(iid, __uuidof(IBitmapSourceAtlasGroup)))
+    {
+        *ppObject = static_cast<IBitmapSourceAtlasGroup*>(this);
+    }
+    else
+    {
+        return BitmapSourceGenerated::QueryInterfaceImpl(iid, ppObject);
+    }
+
+    AddRefOuter();
+    return S_OK;
+}
+
+IFACEMETHODIMP BitmapSource::SetAtlasGroup(UINT32 atlasGroup)
+{
+    IFC_RETURN(CheckThread());
+    static_cast<CImageSource*>(GetHandle())->SetAtlasGroup(atlasGroup);
+    return S_OK;
+}
+
 _Check_return_ HRESULT BitmapSource::SetSourceImpl(_In_ wsts::IRandomAccessStream* pStreamSource)
 {
     auto guard = wil::scope_exit([this]()

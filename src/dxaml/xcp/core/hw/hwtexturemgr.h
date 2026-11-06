@@ -307,7 +307,8 @@ public:
         XUINT32 heightWithoutGutters,
         HWTextureFlags flags,
         _Outptr_ HWTexture **ppTexture,
-        _In_opt_ DCompSurfaceFactory *pSurfaceFactory = NULL
+        _In_opt_ DCompSurfaceFactory *pSurfaceFactory = NULL,
+        UINT32 atlasGroup = 0
         );
 
     xref_ptr<HWTexture> CreateTextureWithNoHardware(bool isVirtual);

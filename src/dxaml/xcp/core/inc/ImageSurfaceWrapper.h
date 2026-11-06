@@ -129,6 +129,9 @@ public:
 
     void SetKeepSystemMemory() { m_mustKeepSystemMemory = TRUE; }
 
+    // Applies to hardware surfaces allocated from now on.
+    void SetAtlasGroup(UINT32 atlasGroup) { m_atlasGroup = atlasGroup; }
+
     bool CheckForHardwareResources();
 
     // Helper method to see if hardware surfaces are set or not. Mostly used in debug asserts.
@@ -309,6 +312,8 @@ private:
     bool m_lostHardwareResources : 1;
 
     bool m_forceRecreateHardwareResources : 1;
+
+    UINT32 m_atlasGroup = 0;
 };
 
 

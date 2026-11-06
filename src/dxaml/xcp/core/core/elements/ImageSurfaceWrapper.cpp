@@ -532,7 +532,9 @@ ImageSurfaceWrapper::AllocateHardwareResources(
             width,
             height,
             flags,
-            newTexture.ReleaseAndGetAddressOf()));
+            newTexture.ReleaseAndGetAddressOf(),
+            nullptr,
+            m_atlasGroup));
 
         // Persistent textures are allowed to stay alive during device lost
         newTexture->SetIsPersistent(persistent);

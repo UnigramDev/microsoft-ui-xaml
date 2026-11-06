@@ -61,6 +61,11 @@ public:
         m_pImageSurfaceWrapper->SetKeepSystemMemory();
     }
 
+    void SetAtlasGroup(UINT32 atlasGroup)
+    {
+        m_pImageSurfaceWrapper->SetAtlasGroup(atlasGroup);
+    }
+
     // Returns the 'physical' size of the underlying image surface, for use when rendering.
     virtual XUINT32 GetWidth() const;
     virtual XUINT32 GetHeight() const;
