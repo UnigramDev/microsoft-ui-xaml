@@ -37,14 +37,14 @@
     <MSBuildCachePackageVersion>$([System.Text.RegularExpressions.Regex]::Match($(PackagesConfigContents), 'Microsoft.MSBuildCache.*?version="(.*?)"').Groups[1].Value)</MSBuildCachePackageVersion>
     <MicrosoftCsWinRTVersion>$([System.Text.RegularExpressions.Regex]::Match($(PackagesConfigContents), 'Microsoft.Windows.CsWinRT.*?version="(.*?)"').Groups[1].Value)</MicrosoftCsWinRTVersion>
     <!-- Internal component versions (formerly Maestro eng/Version.Details.xml). ValueOrDefault => $(WindowsAppSDKVersionPinned) in the mono-build, else the literal fallback. Fallbacks synced to release/2.0-stable's Version.Details.xml pins as of 2026-10 (keep in sync manually when those pins move). -->
-    <FoundationTransportPackageVersion>$([MSBuild]::ValueOrDefault('$(WindowsAppSDKVersionPinned)', '2.0.0-20260831.0.release'))</FoundationTransportPackageVersion>
-    <FrameworkUdkPackageVersion>$([MSBuild]::ValueOrDefault('$(WindowsAppSDKVersionPinned)', '2.1.0-stable-27200.1051.260826-1517.1'))</FrameworkUdkPackageVersion>
-    <IxpTransportPackageVersion>$([MSBuild]::ValueOrDefault('$(WindowsAppSDKVersionPinned)', '2.1.0-stable-27200.1051.260826-1517.1'))</IxpTransportPackageVersion>
-    <BasePackageVersion>$([MSBuild]::ValueOrDefault('$(WindowsAppSDKVersionPinned)', '2.0.4'))</BasePackageVersion>
-    <WinUIDetailsNugetVersion>$([MSBuild]::ValueOrDefault('$(WindowsAppSDKVersionPinned)', '2.10.0-stable.20260909.0'))</WinUIDetailsNugetVersion>
+    <FoundationTransportPackageVersion>$([MSBuild]::ValueOrDefault('$(WindowsAppSDKVersionPinned)', '2.6.5'))</FoundationTransportPackageVersion>
+    <FrameworkUdkPackageVersion>$([MSBuild]::ValueOrDefault('$(WindowsAppSDKVersionPinned)', '3.0.0-experimental-27300.1893.260705-0915.0'))</FrameworkUdkPackageVersion>
+    <IxpTransportPackageVersion>$([MSBuild]::ValueOrDefault('$(WindowsAppSDKVersionPinned)', '2.1.7-experimental'))</IxpTransportPackageVersion>
+    <BasePackageVersion>$([MSBuild]::ValueOrDefault('$(WindowsAppSDKVersionPinned)', '2.6.5'))</BasePackageVersion>
+    <WinUIDetailsNugetVersion>$([MSBuild]::ValueOrDefault('$(WindowsAppSDKVersionPinned)', '2.10.0-experimental.20260826.0'))</WinUIDetailsNugetVersion>
     <!-- Package Versions for use in sample and test apps. Once Transport packages are removed revert to using old version variables -->
-    <FoundationPackageVersion>$([MSBuild]::ValueOrDefault('$(WindowsAppSDKVersionPinned)', '2.3.12'))</FoundationPackageVersion>
-    <IXPPackageVersion>$([MSBuild]::ValueOrDefault('$(WindowsAppSDKVersionPinned)', '2.1.8'))</IXPPackageVersion>
+    <FoundationPackageVersion>$([MSBuild]::ValueOrDefault('$(WindowsAppSDKVersionPinned)', '2.6.5'))</FoundationPackageVersion>
+    <IXPPackageVersion>$([MSBuild]::ValueOrDefault('$(WindowsAppSDKVersionPinned)', '2.6.5'))</IXPPackageVersion>
     <!-- NOTE: release/2.0-stable intentionally has NO "OSS builds pin to last-known-good versions" override block (main added one, but its pinned transport-package versions e.g. 2.0.19-experimental / 2.0.11-experimental do not exist on the 2.0-stable feed and break restore). All builds use the internal literals above (release/2.0-stable's last Version.Details.xml pins). Do not re-add the OSS override on this branch. -->
     <!-- A mono-build checkout can stage its authoritative package-version file above this repository. -->
     <WindowsAppSDKPackageVersionProps>$([MSBuild]::GetPathOfFileAbove('WindowsAppSDK.PackageVersion.props', '$(MSBuildThisFileDirectory)..\'))</WindowsAppSDKPackageVersionProps>

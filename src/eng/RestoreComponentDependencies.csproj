@@ -15,7 +15,8 @@
 
   <ItemGroup Condition="'$(IsInternalWinUIBuild)' != 'true'">
     <PackageReference Include="Microsoft.WindowsAppSDK.Foundation" version="$(FoundationTransportPackageVersion)"/>
-    <PackageReference Include="Microsoft.WindowsAppSDK.InteractiveExperiences" version="$(IxpTransportPackageVersion)"/>
+    <!-- Only its metadata is used, to generate the compositor headers; Foundation 2.6.5 would otherwise reject an older IXP. -->
+    <PackageDownload Include="Microsoft.WindowsAppSDK.InteractiveExperiences" Version="[$(IxpTransportPackageVersion)]"/>
   </ItemGroup>
   <ItemGroup Condition="'$(IsInternalWinUIBuild)' == 'true'">
     <PackageReference Include="Microsoft.WindowsAppSDK.Foundation.TransportPackage" version="$(FoundationTransportPackageVersion)"/>

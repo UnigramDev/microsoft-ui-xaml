@@ -32,7 +32,8 @@ if ($PSVersionTable.PSVersion.Major -eq 5)
 
 try
 {
-    Invoke-Expression "& { $(Invoke-RestMethod https://aka.ms/install-artifacts-credprovider.ps1) } -AddNetfx"
+    # The WinUI-Dependencies feed is anonymous; the credential provider would install into %USERPROFILE%\.nuget\plugins, where every restore picks it up.
+    if ($env:WINUI_INSTALL_CREDPROVIDER) { Invoke-Expression "& { $(Invoke-RestMethod https://aka.ms/install-artifacts-credprovider.ps1) } -AddNetfx" }
 }
 finally
 {
