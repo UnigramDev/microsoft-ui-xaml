@@ -3,6 +3,12 @@
 
 #include "precomp.h"
 #include "TimeMgr.h"
+
+// This source builds with /Zc:wchar_t- and the WinUIDetails package's Internal2.lib with native wchar_t, so their
+// manglings differ; both are 16-bit and passed the same way.
+#if defined(_M_X64) || defined(_M_ARM64)
+#pragma comment(linker, "/alternatename:?ConnectAnimation@CompositionAnimationHelper@@QEAAJPEAUICompositionObject@Composition@UI@Microsoft@ABI@@PEBGPEAUICompositionAnimation@3456@PEAPEAUICompositionAnimationController@@@Z=?ConnectAnimation@CompositionAnimationHelper@@QEAAJPEAUICompositionObject@Composition@UI@Microsoft@ABI@@PEB_WPEAUICompositionAnimation@3456@PEAPEAUICompositionAnimationController@@@Z")
+#endif
 #include <TranslateTransform.h>
 #include "animation.h"
 #include <palcore.h>

@@ -3,6 +3,12 @@
 
 #include "precomp.h"
 #include "LoadLibraryAbs.h"
+
+// This source builds with /Zc:wchar_t- and the WinUIDetails package's Internal2.lib with native wchar_t, so their
+// manglings differ; both are 16-bit and passed the same way.
+#if defined(_M_X64) || defined(_M_ARM64)
+#pragma comment(linker, "/alternatename:?GetModuleHandleExWAbs@@YAHKPEB_WPEAPEAUHINSTANCE__@@@Z=?GetModuleHandleExWAbs@@YAHKPEBGPEAPEAUHINSTANCE__@@@Z")
+#endif
 #include <windows.h>
 #include <string>
 #include <minerror.h>
