@@ -241,4 +241,9 @@ private:
 
     bool m_wasLostDeviceReleased {false};
     bool m_testHook_IsDeviceLost {false};
+
+    // Protected by m_lock. See TrimMemory.
+    bool m_trimPending {false};
+    UINT64 m_lastTrimTime {0};
+    static constexpr UINT64 sc_minimumTrimIntervalMilliseconds = 5000;
 };

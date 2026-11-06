@@ -962,9 +962,31 @@ CD3D11DeviceInstance::TrimMemory(const UINT64 releaseTime)
             UINT32 refCount = pPooledSurface->Release();
             ASSERT(refCount == 0);
             UNREFERENCED_PARAMETER(refCount);
+
+            m_trimPending = true;
         }
     }
 
+    // Drivers keep released staging allocations committed to the process until Trim, and the only other Trim is on
+    // suspend, which a desktop app never reaches. Steady uploads reuse pooled surfaces and release nothing, so this
+    // runs after a burst; the interval bounds it when releases keep coming.
+    if (m_trimPending && m_pDevice != nullptr && releaseTime - m_lastTrimTime >= sc_minimumTrimIntervalMilliseconds)
+    {
+        Microsoft::WRL::ComPtr<IDXGIDevice3> dxgiDevice3;
+        if (SUCCEEDED(m_pDevice->QueryInterface(IID_PPV_ARGS(&dxgiDevice3))))
+        {
+            // Trim can access the device context, so take a lock on it, as ReleaseScratchResources does.
+            CD3D11SharedDeviceGuard sharedGuard;
+            if (SUCCEEDED(TakeLockAndCheckDeviceLost(&sharedGuard)))
+            {
+                auto lockedContext = GetLockedDeviceContext(&sharedGuard);
+                dxgiDevice3->Trim();
+            }
+        }
+
+        m_trimPending = false;
+        m_lastTrimTime = releaseTime;
+    }
 }
 
 std::shared_ptr<CD3D11DeviceInstance> CD3D11DeviceInstance::GetSharedDeviceInstance()
