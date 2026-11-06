@@ -557,9 +557,10 @@ _Check_return_ HRESULT DesktopWindowImpl::MoveWindowImpl(_In_ INT x, _In_ INT y,
 
 _Check_return_ HRESULT DesktopWindowImpl::SetAtlasSizeHintImpl(UINT width, UINT height)
 {
-    IFC_RETURN(ErrorHelper::OriginateErrorUsingResourceID(E_NOTIMPL, ERROR_WINDOW_DESKTOP_NOT_IMPLEMENTED));
+    // The hint is the core's, so it applies to every window and survives device loss.
+    m_dxamlCoreNoRef->SetAtlasSizeHint(width, height);
 
-    return E_NOTIMPL;
+    return S_OK;
 }
 
 _Check_return_ HRESULT DesktopWindowImpl::ReleaseGraphicsDeviceOnSuspendImpl(BOOLEAN enable)

@@ -1460,6 +1460,13 @@ void DCompTreeHost::SetAtlasSizeHint(XUINT32 width, XUINT32 height)
         reinterpret_cast<XUINT64>(this),
         width,
         height);
+
+    // Desktop windows have no SetTarget call to apply it, and a device that already exists would otherwise keep its
+    // hint until it is recreated. DComp copies the hint into every surface factory, existing and future.
+    if (GetSurfaceFactory() != nullptr)
+    {
+        IGNOREHR(UpdateAtlasHint());
+    }
 }
 
 void DCompTreeHost::ResetAtlasSizeHint()
