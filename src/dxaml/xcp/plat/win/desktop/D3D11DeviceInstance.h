@@ -157,6 +157,7 @@ public:
     bool UseIntermediateUploadSurface() const { return m_fUseIntermediateUploadSurface; }
 
     void TrimMemory(const UINT64 currentTime);
+    void CheckForAdapterChange();
 
     void RecordDeviceAsLost();
     bool IsDeviceLost();
@@ -241,6 +242,9 @@ private:
 
     bool m_wasLostDeviceReleased {false};
     bool m_testHook_IsDeviceLost {false};
+
+    // Protected by m_lock. See CheckForAdapterChange.
+    ULONG m_lastDisplaySettingsUniqueness {0};
 
     // Protected by m_lock. See TrimMemory.
     bool m_trimPending {false};

@@ -27,6 +27,9 @@
 #include <RuntimeEnabledFeatures.h>
 #include "FrameworkUdk/Containment.h"
 
+extern "C" ULONG APIENTRY GdiEntry13(VOID);
+#define DdQueryDisplaySettingsUniqueness    GdiEntry13
+
 using namespace RuntimeFeatureBehavior;
 using namespace Microsoft::WRL;
 
@@ -986,6 +989,37 @@ CD3D11DeviceInstance::TrimMemory(const UINT64 releaseTime)
 
         m_trimPending = false;
         m_lastTrimTime = releaseTime;
+    }
+}
+
+//------------------------------------------------------------------------------
+//
+//  Synopsis:
+//      Called on the UI thread after each frame.
+//      Marks the device lost when a display change has moved the first adapter.
+//
+//------------------------------------------------------------------------------
+void
+CD3D11DeviceInstance::CheckForAdapterChange()
+{
+    // The CoreWindow host runs this check from WM_PAINT after a display change (CJupiterControl::UpdateHdr); desktop
+    // windows and islands have no such path. Without it the device stays on its adapter when the order changes, and
+    // the compositor, which does move, keeps a copy of every XAML surface on both.
+    const ULONG displaySettingsUniqueness = DdQueryDisplaySettingsUniqueness();
+
+    wil::cs_leave_scope_exit guard = m_lock.lock();
+
+    if (displaySettingsUniqueness == m_lastDisplaySettingsUniqueness)
+    {
+        return;
+    }
+
+    m_lastDisplaySettingsUniqueness = displaySettingsUniqueness;
+
+    if (m_pDevice != nullptr)
+    {
+        // A stale device is recorded as lost, and the next frame recovers onto the new adapter.
+        IGNOREHR(EnsureDXGIAdapters());
     }
 }
 

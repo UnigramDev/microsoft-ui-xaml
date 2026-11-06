@@ -320,6 +320,7 @@ CD3D11Device::TrimMemory()
 {
     const UINT64 releaseTime = gps->GetCPUMilliseconds() - sc_stagingTextureReleaseFrameDelayMilliseconds;
 
+   m_deviceInstance->CheckForAdapterChange();
    m_deviceInstance->TrimMemory(releaseTime);
 
     if (NULL != m_UploadIntermediate.pTexture)
